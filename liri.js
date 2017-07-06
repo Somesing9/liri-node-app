@@ -6,14 +6,10 @@
 // do-what-it-says
 // 
 var fs = require('fs');
-var spotify = require("spotify");
+// var spotify = require("spotify");
+var SpotifyWebApi = require("spotify-web-api-node");
 var twitter = require("twitter");
-var client = new twitter({
-  consumer_key: '6H1OODihqYLo19Iso21iAaku9',
-  consumer_secret: 'MMCibOPqrtm3ONn8KZLmZySB1SCJOlQkI6nMY7TK58SPaRoZW5',
-  access_token_key: '879852472126369794-fOAuE2oFv2Z2xdjbN6SgJNyyjIwZd3Q',
-  access_token_secret: 'nE0S4FdijBmtvxxjX3dYOfX5MkaQ7Lor2k6PGeyPsPd0W',
-});
+var keys = require("./keys.js");
 var request = require("request");
 var input = process.argv;
 var command = process.argv[2];
@@ -22,34 +18,41 @@ var searchFor = "";
 for (var i = 0; i < input.length; i++) {
   searchFor += input[i] + " ";
 }
-
 searchFor.trim();
 
-// console.log(command);
-console.log(searchFor);
-// console.log(input.length);
+whichAPI();
 
-
-switch (command) {
-  case "my-tweets":
-    myTweets();
-    break;
-  case "spotify-this-song":
-    spotifyThis();
-    break;
-  case "movie-this":
-    movieThis();
-    break;
-  case "do-what-it-says":
-    doThis();
-    break;
-  default:
-    console.log("That command was not recognized");
-    break;
+function whichAPI() {
+  switch (command) {
+    case "my-tweets":
+      myTweets();
+      break;
+    case "spotify-this-song":
+      spotifyThis();
+      break;
+    case "movie-this":
+      movieThis();
+      break;
+    case "do-what-it-says":
+      doThis();
+      break;
+    default:
+      console.log("That command was not recognized");
+      break;
+  }
 }
 
+// Call to Twitter API
 function myTweets() {
-  console.log("Twitter search");
+  // console.log("Twitter search");
+  var myKeys = keys.twitterKeys;
+
+  var client = new twitter({
+    consumer_key: myKeys['consumer_key'],
+    consumer_secret: myKeys['consumer_secret'],
+    access_token_key: myKeys['access_token_key'],
+    access_token_secret: myKeys['access_token_secret'],
+  });
 
   var params = { screen_name: 'dancwru' };
   client.get('statuses/user_timeline', params, function(error, tweets, response) {
@@ -59,32 +62,36 @@ function myTweets() {
       }
     }
   });
-  // Show last 20 tweets and when they were created
 }
 
+// Call to Spotify API
 function spotifyThis() {
-  console.log("Spotify This");
-  //Output
-  //Artist
-  //song name
-  //preview link
-  //albumb
-  //defualt to The SIgn by Ace of Base
-  spotify.search({ type: 'track', query: 'dancing in the moonlight' }, function(err, data) {
-    if (err) {
-      console.log('Error occurred: ' + err);
-      return;
-    }
-    console.log(JSON.stringify(data,null, 2));
-    // Do something with 'data' 
-  });
+  // console.log("Spotify This");
+
+  if (searchFor) {
+    searchFor = "track:" + searchFor;
+  } else {
+    searchFor = "track:The Sign artist:Ace Of Base";
+    artist = "Ace of Base"
+  }
+
+  var spotifyApi = new SpotifyWebApi();
+  spotifyApi.setAccessToken('BQD45CVE0mBLrCWiNLFQ5HZMzP2kTx8kpFs3aTjJeGAQS0OU62p7qnWdV_ylMOJZaXVsmfsVux-VrbTLgKURHdXlBz7-fEFhls0RSkRbvQAOasnkTgJCHOp3hkOVNsdB18I1vKxXdsmz2Uy4pJ-wZz7eLtetB9ESIBY');
+  spotifyApi.searchTracks(searchFor, { limit: 1, offset: 1 })
+    .then(function(data) {
+      // console.log('Search tracks by "Love" in the artist name', JSON.stringify(data.body.tracks.items["album"],null, 2));
+      console.log(data.body.tracks.items[0]['name']);
+      console.log(data.body.tracks.items[0]['preview_url']);
+      console.log(data.body.tracks.items[0]['album']['artists'][0]['name']);
+      console.log(data.body.tracks.items[0]['album']['name']);
+    }, function(err) {
+      console.log('Something went wrong!', err);
+    });
 }
 
-/**
- * OMDB API call
- */
+// Call to OMDB API
 function movieThis() {
-  console.log("OMDB Search");
+  // console.log("OMDB Search");
   var queryUrl = "http://www.omdbapi.com/?apiKey=40e9cece&t="
   var movieTitle = "";
 
@@ -116,14 +123,17 @@ function movieThis() {
   });
 }
 
+// Read from Random.txt
 function doThis() {
-  console.log("Do this");
-  var filePath =  process.cwd() + "\\random.txt";
+  // console.log("Do this");
+  var filePath = process.cwd() + "\\random.txt";
   var data = fs.readFile(filePath, 'utf-8', function(err, data) {
     if (!err) {
-      console.log(data);
-    }
-    else  {
+      data = data.split(",");
+      command = data[0];
+      searchFor = data[1];
+      whichAPI();
+    } else {
       console.log(err);
     }
   });
